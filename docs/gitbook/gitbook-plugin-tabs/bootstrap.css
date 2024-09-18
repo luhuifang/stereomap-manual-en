@@ -1,0 +1,136 @@
+/*!
+ * Generated using the Bootstrap Customizer (http://getbootstrap.com/customize/?id=509512b96ac924f7f170)
+ * Config saved to config.json and https://gist.github.com/509512b96ac924f7f170
+ */
+/*!
+ * Bootstrap v3.3.6 (http://getbootstrap.com)
+ * Copyright 2011-2015 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ */
+
+.nav {
+  margin-bottom: 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.nav > li {
+  position: relative;
+  display: block;
+}
+
+.nav > li > a {
+  position: relative;
+  display: block;
+  padding: 10px 15px;
+}
+
+.nav > li > a:hover,
+.nav > li > a:focus {
+  text-decoration: none;
+  background-color: #eeeeee;
+}
+
+.nav > li.disabled > a {
+  color: #777777;
+}
+
+.nav > li.disabled > a:hover,
+.nav > li.disabled > a:focus {
+  color: #777777;
+  text-decoration: none;
+  background-color: transparent;
+  cursor: not-allowed;
+}
+
+.nav .open > a,
+.nav .open > a:hover,
+.nav .open > a:focus {
+  background-color: #eeeeee;
+  border-color: #337ab7;
+}
+
+.nav .nav-divider {
+  height: 1px;
+  margin: 9px 0;
+  overflow: hidden;
+  background-color: #e5e5e5;
+}
+
+.nav > li > a > img {
+  max-width: none;
+}
+
+.nav-tabs {
+  border-bottom: 1px solid #dddddd;
+}
+
+.nav-tabs > li {
+  float: left;
+  margin-bottom: -1px;
+}
+
+.nav-tabs > li > a {
+  margin-right: 2px;
+  line-height: 1.42857143;
+  border: 1px solid transparent;
+  border-radius: 4px 4px 0 0;
+}
+
+.nav-tabs > li > a:hover {
+  border-color: #eeeeee #eeeeee #dddddd;
+}
+
+.nav-tabs > li.active > a,
+.nav-tabs > li.active > a:hover,
+.nav-tabs > li.active > a:focus {
+  color: #555555;
+  background-color: #ffffff;
+  border: 1px solid #dddddd;
+  border-bottom-color: transparent;
+  cursor: default;
+}
+
+.tab-content > .tab-pane {
+  display: none;
+}
+
+.tab-content > .active {
+  display: block;
+}
+
+.nav:before,
+.nav:after {
+  content: " ";
+  display: table;
+}
+
+.nav:after {
+  clear: both;
+}
+
+/*
+ * Add custom styling so the tabs don't look like Bootstrap tabs.
+ * We're only interested in the tab behavior, not the styling.
+ */
+
+.book .book-body .page-wrapper .page-inner section ul.nav-tabs {
+  border: none;
+  padding: 0px;
+}
+
+.book .book-body .page-wrapper .page-inner section .nav-tabs > li > a {
+  /* TODO: make this color inherit from the book instead of being hardcoded */
+  color: #333;
+  border: none;
+  padding-left: 0px;
+  padding-bottom: 0px;
+  padding-top: 0px;
+  text-decoration: none !important;
+  outline: 0;
+}
+
+.book .book-body .page-wrapper .page-inner section .nav-tabs > li.active > a {
+  /* TODO: make this color inherit from the book instead of being hardcoded */
+  color: #4183c4;
+}

@@ -1,0 +1,17 @@
+.hints-icon {
+    display: table-cell;
+    padding-right: 15px;
+    padding-left: 5px;
+}
+
+.hints-container {
+    display: table-cell;
+}
+
+.hints-container p, .hints-container ul{
+    margin-bottom: 0;
+}
+
+figcaption {
+    text-align: center;
+}
