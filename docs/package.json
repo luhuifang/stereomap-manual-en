@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "gitbook-plugin-katex": "^1.1.4",
+    "gitbook-plugin-lightbox": "^1.2.0",
+    "gitbook-plugin-popup": "^0.0.1"
+  }
+}
