@@ -1,0 +1,146 @@
+# Navigation for Visual Explore
+
+## Accessing Visual Explore
+
+StereoMap's Visual Explore module can be accessed from the start page.
+
+<figure><img src="../img/assets/home page-VE.png" alt=""><figcaption></figcaption></figure>
+
+## Load the Dataset
+
+Open StereoMap and click Visual Explore to open your file system, and select `.stereo` file to load the dataset (see [Visual Explore Input Files](../getting-started.md#visual-explore-input-files) for more information).
+
+<div><figure><img src="../img/assets/select dataset.png" alt=""><figcaption></figcaption></figure> <figure><img src="../img/assets/select dataset-open.png" alt=""><figcaption></figcaption></figure></div>
+
+## Visual Explore Interface
+
+The following image shows the layout of the Visual Explore interface.
+
+<figure><img src="../img/assets/interface navigation.png" alt=""><figcaption></figcaption></figure>
+
+## Canvas
+
+<figure><img src="../img/assets/interface navigation-canvas.png" alt=""><figcaption></figcaption></figure>
+
+The **Canvas** shows the spatial feature expression data as spots overlaid on the ssDNA image of the tissue section, and the workspace tools are floating on the **Canvas**.
+
+Workspace tools:
+
+### Bin Size Dropdown
+
+Click ![](../img/assets/bin_size_dropdown.png) to select a desirable resolution for the spatial feature expression heatmap.
+
+### **Display Options**
+
+Three options ![](../img/assets/display_options.png) for adjusting the canvas panel and information pane floating on the canvas. From left to right:
+
+* **Setting**: show or hide information panes, spot or cell tooltips, canvas navigator, or rotate canvas baseboard. <img src="../img/assets/display_options_setting.png" alt="" data-size="original">
+* **Undo**: undo the last selection action. The undo step is limited to 10 steps.
+* **Reset**: discard all your actions and reset the canvas to its initial state.
+
+### **Mouse Tools**
+
+Four tools from left to right are:
+
+<div align="left"><img src="../img/assets/canvas_tools.png" alt="" width="188"></div>
+
+* **Cursor**: the mouse will toggle to the click-and-drag mouse action.
+* **Lasso**: draw a freehand shape with the lasso selection tool for selecting regions of interest (ROIs). You will need to press **Ctrl** on your keyboard and use your mouse to draw the shape (release the mouse and press **Enter** to complete the selection). If you need to draw discontinuous regions, first release and then press **Ctrl** and mouse again between each draw. To remove an area, hold **Alt** or **Option** and draw the region to remove. The Lasso function can be employed alongside the creation of spot groups (see [Group Menu](navigation-for-visual-explore.md#group-menu) for more information). This approach allows for better interpretability and the ability to group related features together. See [Characterize Substructure and Generate New Heatmap](bioinformatics-analysis/stereo-seq-t-ff.md#characterize-substructure-and-generate-new-heatmap) or [Region Annotation Based on H\&E Image](bioinformatics-analysis/stereo-seq-n-ffpe.md#region-annotation-based-on-h-and-e-image) for more about lasso function.
+* **Reference trackline template**: click to display the trackline template on the canvas. This is useful in checking whether the microscope-acquired tracklines are accurately overlaid with the reference tracklines derived from a sequencing-based spatial feature expression matrix. See [Check Image Alignment](bioinformatics-analysis/stereo-seq-t-ff.md#check-image-alignment) for more information.
+* **Measure**: measure the distance between two mouse clicks in pixels.
+
+### **Load and Download**
+
+Two options for loading or exporting files.
+
+<div align="left"><img src="../img/assets/load_and_download.png" alt="" width="30"></div>
+
+* **Load file**: click to load a complementary file that corresponds to the dataset.![](../img/assets/load_and_download-load.png)
+  * Select **Load a Lasso Record** to upload a `.lasso.geojson` file, then you can modify the lasso area.
+  * Select **Load CSV File** to upload your [differential expression analysis](bioinformatics-analysis/stereo-seq-t-ff.md#differential-expression-analysis) result. A new window will open with your CSV file.
+* **Download file**: click ![](../img/assets/load_and_download-download.png) to open download window for exporting images. ![](<../img/assets/download file.png>)
+  * You can customize your image prefix name in the file name enter box.
+  * You have two options for saving your screen displayed on the canvas:
+    * **Screenshot Image** captures everything currently displayed on the canvas. The quality of the screenshot depends on your display resolution.
+    * **HD Image** saves the image in a higher resolution. If the legend is displayed, it will be saved as a separate image.
+  *   When you click **Export**, your file system will open, allowing you to choose an appropriate path.
+
+      <figure><img src="../img/assets/Screenshot download.png" alt=""><figcaption></figcaption></figure>
+
+### **Zoom bar**
+
+<div align="left"><img src="../img/assets/zoom_bar-simplified.png" alt=""></div>
+
+Toggle the zoom bar to zoom in and out the canvas.
+
+## Feature Menu
+
+<figure><img src="../img/assets/interface navigation-feature menu.png" alt=""><figcaption></figcaption></figure>
+
+The **Feature menu** displays the summarized feature count data. Click the menu bar to expand/collapse the panel.
+
+If your canvas shows the spatial map in **square bins** (such as bin5, bin20, etc), the panel lists the feature name, total MID count, and E10 value. By default, the list is sorted in descending order by MID count, but you can also click the small arrow on the right of each table header to sort by the selected column in ascending or descending order. The E10 score is a measure of how clustered the expression pattern of a feature is. A high E10 value indicates that although the feature is distributed across the tissue region, the significant expression spots are only found in a small area.
+
+If the canvas shows the map in the **cell bin**, the panel lists the feature name, cell count, and total MID count of that feature.
+
+<div><figure><img src="../img/assets/search_feature_bin20.png" alt=""><figcaption><p>Feature distribution in bin20</p></figcaption></figure> <figure><img src="../img/assets/search_feature_cell.png" alt=""><figcaption><p>Feature distribution in cell</p></figcaption></figure></div>
+
+You can explore the expression of specific features by selecting feature names.
+
+*   **Search features:** You can look for the specific feature in the search bar. The search is case-insensitive and supports fuzzy search. You can search for multiple features by separating names with commas.
+
+    <figure><img src="../img/assets/search_feature.png" alt=""><figcaption><p>Square bin</p></figcaption></figure>
+* **Select one feature:** Click the feature name and the feature expression distribution will then be displayed on **Canvas**.
+* **Select multiple features:** If you want to select multiple features, just check the checkboxes <img src="../img/assets/checkboxOutline.svg" alt="" data-size="line"> in front of their feature names. This will allow you to view a summarized expression heatmap for all the selected features. Instead of showing a summarized heatmap, you can explore the co-expression of features by viewing them in different colors (see [Co-expression of Selected Genes](bioinformatics-analysis/stereo-seq-t-ff.md#co-expression-of-selected-genes) for more information).
+
+## Layer Menu and Bin Sizes
+
+<div><figure><img src="../img/assets/interface navigation-image layer.png" alt=""><figcaption></figcaption></figure> <figure><img src="../img/assets/interface navigation-analysis layer.png" alt=""><figcaption></figcaption></figure> <figure><img src="../img/assets/interface navigation-Bin Sizes.png" alt=""><figcaption></figcaption></figure></div>
+
+The **Layer menu** is responsible for controlling how the data is displayed in the **Canvas**.
+
+Layers are grouped as **Image Layer** and **Main Analysis Layer**, and the bin size panel controls the resolution of the feature density map.
+
+*   Image Layer has staining images and segmentation masks registered with the feature expression matrix. Image adjustments include opacity, normalization, brightness, contrast, and color. Options vary based on image type. Normalization adjusts the maximum and minimum value of the image, which helps visualize tracklines. The computation formula is:
+
+    $$norm=\frac{X_i-min(x)}{max(x)-min(x)}$$
+* Main Analysis Layer includes feature expression matrix view in heatmap, clusters, or UMAP. The cluster or UMAP view is only applicable for limited bin sizes. See [Main Analysis Layer Display Options](navigation-for-visual-explore.md#main-analysis-layer-display-options) for more information. The layers listed in this category can be opened in a new linked window by clicking <img src="../img/assets/new_linked_window.png" alt="" data-size="original"> in front of the layer name. The windows are usually linked by the spot coordinates. See [Microorganism and Host Genes](bioinformatics-analysis/stereo-seq-n-ffpe.md#microorganism-and-host-genes) for more information. The linked window can also be manipulated together by pre-defined feature pairs in Stereo-CITE dataset. Visit [Spatial Distribution of Protein and its Corresponding Marker Gene](bioinformatics-analysis/stereo-cite-t-ff.md#spatial-distribution-of-protein-and-its-corresponding-marker-gene) for more information.
+* The available bin sizes are 1, 5, 10, 20, 50, 100, 150, 200, and cell bin (only applicable if the dataset contains cell segmentation output). Bin 1 represents one DNB per bin, while Bin 5 represents 5 x 5 DNBs as a binning unit. Cell bin means binning DNBs based on the cell covered regions. There's also an **Auto-binsize** switch that you can toggle. When you turn on the **Auto-binsize** mode, the canvas resolution will automatically adjust based on the zoom-in and zoom-out magnification.
+
+### Main Analysis Layer Display Options
+
+Main analysis layers offer varied display options based on projection type and binning, for easy data exploration.
+
+Options to adjust the display of the heatmap layers:
+
+<table><thead><tr><th width="117">Heatmap Options</th><th width="202">Explanation</th><th>Bin N</th><th>Cell Bin</th></tr></thead><tbody><tr><td>Color</td><td>Choose the color scheme of the heatmap for better visualization.</td><td><img src="../img/assets/Bin N color1.png" alt=""><br><img src="../img/assets/Bin N color2.png" alt=""></td><td><img src="../img/assets/Cell Bin color1.png" alt=""><br><img src="../img/assets/Cell Bin color2.png" alt=""></td></tr><tr><td>Spot Size</td><td>Adjust the spot size.</td><td><img src="../img/assets/Bin N spot size1.png" alt=""><br><img src="../img/assets/Bin N spot size2.png" alt=""></td><td>NA</td></tr><tr><td>Opacity</td><td>Adjust the heatmap opacity for simultaneously visualize image layers.</td><td><img src="../img/assets/Bin N heatmap opacity1.png" alt=""><br><img src="../img/assets/Bin N heatmap opacity2.png" alt=""></td><td><img src="../img/assets/Cell Bin heatmap opacity1.png" alt=""><br><img src="../img/assets/Cell Bin heatmap opacity2.png" alt=""></td></tr><tr><td>MID Filter</td><td><p>Filter spots based on MID count. See <a href="bioinformatics-analysis/stereo-seq-t-ff.md#mid-filtering">MID Filtering</a> for more information.</p><p><br><em>Only applicable on selected features.</em></p></td><td><img src="../img/assets/Bin N MID filter1.png" alt=""><br><img src="../img/assets/Bin N MID filter2.png" alt=""></td><td>NA</td></tr><tr><td>Color Bar</td><td>Show or hide the color bar or define the expression range for coloring. By default, the color range goes from 0 to the highest value of any spot in the given bin size. However, you can customize the color range to better visualize bins that fall within a limited feature expression value range.</td><td><img src="../img/assets/Bin N color bar1.png" alt=""><br><img src="../img/assets/Bin N color bar2.png" alt=""></td><td><img src="../img/assets/Cell Bin color bar1.png" alt=""><br><img src="../img/assets/Cell Bin color bar2.png" alt=""></td></tr><tr><td>Boundaries</td><td>Show or hide tissue boundary generated from image or expression matrix. The boundary can be displayed as the outline, filled polygon, or both. The opacity of the filled polygon is adjustable.</td><td><img src="../img/assets/Bin N boundaries1.png" alt=""><br><img src="../img/assets/Bin N boundaries2.png" alt=""><br><img src="../img/assets/Bin N boundaries3.png" alt=""></td><td>NA</td></tr><tr><td>Display Schemes</td><td>Show expression distribution of features in summarized heatmap or discrete multi-color. See <a href="bioinformatics-analysis/stereo-seq-t-ff.md#co-expression-of-selected-genes">Co-expression of Selected Genes</a> for more information.</td><td><img src="../img/assets/Bin N display schemes1.png" alt=""><img src="../img/assets/Bin N display schemes2.png" alt=""></td><td>NA</td></tr></tbody></table>
+
+Options to adjust the display of the clustering layers:
+
+<table><thead><tr><th width="120">Cluster &#x26; UMAP Options</th><th width="223">Explanation</th><th>Bin N</th><th>Cell Bin</th></tr></thead><tbody><tr><td>Opacity</td><td>Adjust the clustering layer opacity for simultaneously visualize image layers.</td><td><img src="../img/assets/Bin N cluster opacity1.png" alt=""><br><img src="../img/assets/Bin N cluster opacity2.png" alt=""></td><td><img src="../img/assets/Cell Bin cluster opacity1.png" alt=""><br><img src="../img/assets/Cell Bin cluster opacity2.png" alt=""></td></tr><tr><td>Form of cells &#x26; Outline color</td><td>Set cells to appear filled, outlined, or both. The acceptable choices for cell border colors (outlines) include colors assigned by clusters, white, black, and green.</td><td>NA</td><td><img src="../img/assets/Cell Bin Form of cells &#x26; Outline color1.png" alt=""><br><img src="../img/assets/Cell Bin Form of cells &#x26; Outline color2.png" alt=""><br><img src="../img/assets/Cell Bin Form of cells &#x26; Outline color3.png" alt=""></td></tr></tbody></table>
+
+## Group Menu
+
+The **Group** menu lists the spot/region groups. The group includes two types, SAW-generated groups and custom groups. SAW-generated groups list the clusters computed in SAW pipelines (`SAW count`, `SAW realign`, `SAW reanalyze`).
+
+<figure><img src="../img/assets/interface navigation-group menu.png" alt=""><figcaption></figcaption></figure>
+
+You can access the cluster by first choosing the bin size that has been performed clustering, and showing the layer in **Cluster**. By default, the SAW-generated groups show the clustering in bin size of 200 or cell bin (if the tissue has been segmented into cells based on the image) with the Leiden resolution of 1.0.
+
+<div><figure><img src="../img/assets/group optimization1.png" alt=""><figcaption></figcaption></figure> <figure><img src="../img/assets/group optimization2.png" alt=""><figcaption></figcaption></figure></div>
+
+* Edit the **Optimization** percentage value or drag the slider to adjust the display of the image layer.
+* Click the checkbox <img src="../img/assets/checkboxOutline.svg" alt="" data-size="original"> in front of the cluster name to hide or show the clusters.
+* Click the color dot to edit the cluster color.
+
+You can create a new group coupled with the [**Lasso** function](navigation-for-visual-explore.md#mouse-tools). Use the lasso to select a region, name the region name, and assign the label to the group. Or you can create new groups by clicking **+ Create a new group** and assign the label to the created new group while saving lasso labels.
+
+<div><figure><img src="../img/assets/create a new group.png" alt=""><figcaption></figcaption></figure> <figure><img src="../img/assets/create a new label to an exist group.png" alt=""><figcaption></figcaption></figure> <figure><img src="../img/assets/custom group with 2 labels.png" alt=""><figcaption></figcaption></figure></div>
+
+* Click <img src="../img/assets/more.png" alt="" data-size="line"> after the group name to edit name or export region coordinates in GeoJSON format. You can also export differential expression analysis required parameters by clicking **GeoJSON for differential expression**. See [Differential Expression Analysis](bioinformatics-analysis/stereo-seq-t-ff.md#differential-expression-analysis) for more information.
+
+<div><figure><img src="../img/assets/group more.png" alt=""><figcaption></figcaption></figure> <figure><img src="../img/assets/label more.png" alt=""><figcaption></figcaption></figure></div>
+
+\* Click the label name lights up the selected region. The yellow region outline The selected label will be highlighted in yellow, and the corresponding statistic is displayed in the floating panel.
+
+<div><figure><img src="../img/assets/show label cellbin.png" alt=""><figcaption></figcaption></figure> <figure><img src="../img/assets/show label bin N.png" alt=""><figcaption></figcaption></figure></div>

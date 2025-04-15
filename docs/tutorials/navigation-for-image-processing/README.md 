@@ -1,0 +1,50 @@
+# Navigation for Image Processing
+
+## Why Use Images in Spatial Analysis
+
+The expression level of features (such as RNA and proteins) on clinical tissues might be uneven, making it challenging to identify tissue boundaries accurately solely based on the spatial feature expression density heat map. However, microscope images of cell nuclei (such as ssDNA fluorescent staining or DAPI staining) or tissue hematoxylin and eosin (H\&E) staining can clearly show the whole tissue region. The use of staining images can significantly improve the outlining of tissue or even cells. After determining the boundaries, precisely align the image with the density map and use the boundary information to obtain a subset density map of tissue or cell region for further analysis.
+
+<figure><img src="../../img/assets/Basic Stereo-seq image processing logic.png" alt=""><figcaption><p>Basic Stereo-seq image processing logic</p></figcaption></figure>
+
+## Image Types and Format
+
+Here is a summary of StereoMap and SAW support image input types and formats:
+
+<table><thead><tr><th width="234">Image Types</th><th width="193">Image Format</th><th width="145">Magnification Objectives</th><th>Stereo-seq Chip Size</th></tr></thead><tbody><tr><td><p>Nuclei-staining image</p><p>e.g. ssDNA, DAPI</p></td><td>8 or 16-bit grayscale single-page image</td><td>10X</td><td>Up to 2 cm x 3 cm</td></tr><tr><td><p>Nuclei-staining + immunofluorescence image</p><p>e.g. DAPI + up to 6 IFs</p></td><td>8 or 16-bit grayscale single-page image</td><td>10X</td><td>Up to 1 cm x 1 cm</td></tr><tr><td>Hematoxlin &#x26; Eosin (H&#x26;E) staining image</td><td>24-bit color image</td><td>10X</td><td>Up to 1 cm x 1 cm</td></tr></tbody></table>
+
+The Stereo-seq chip surface contains **tracklines** — **horizontal and vertical lines arranged at periodic intervals** — to aid in base calling and image registration. These tracklines are areas where the capturing probe was unloaded, and will appear as narrow lines on the spatial feature expression density heat map.&#x20;
+
+To ensure optimal image registration and analysis, the tissue staining and imaging SOPs for Stereo-seq technology have been carefully designed and tested. These SOPs minimize any impact on downstream mRNA capture rates while enhancing trackline visibility in microscope images. Since tracklines are present in both the density heat map and the microscope image, they serve as precise position markers for aligning images with spatial expression data.
+
+Below are examples illustrating tracklines in both microscope images and the spatial feature expression density heatmap.
+
+{% hint style="info" %}
+The images are adjusted to optimize the visibility.
+{% endhint %}
+
+| Tracklines on fluorescence image                                                                                                                           | Tracklines on color image                                                                                                           | Tracklines on density heat map                                                                                                        |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| <p><img src="../../img/assets/fluorescence_image_track_lines.png" alt="" data-size="original"></p><p><br><em>Tracklines show as black lines.</em></p> | <p><img src="../../img/assets/color_image_track_lines.png" alt=""><br><br><em>Tracklines show as lighter white lines.</em></p> | <p><img src="../../img/assets/bin1_density_heat_map_track_lines.png" alt=""><br><br><em>Tracklines show as black lines.</em></p> |
+
+**SAW** incorporates **automated image processing algorithms** to accurately detect tissue and cell boundaries and identify tracklines on the Stereo-seq chip. These tracklines are essential for aligning microscope images with the spatial feature expression matrix. However, if [**trackline detection**](../navigation-for-tools/stereo-seq-image-qc.md#trackline-detection) **fails** or **tissue/cell boundaries appear unclear**, manual outlining or alignment may be required to ensure precise image registration.
+
+## Image Processing Roadmap
+
+A recommended image-processing roadmap would be:
+
+1. **Assess the quality of your microscope image.** This step aims to verify the detectability of tracklines, the accuracy of stitched image tiles, and the visibility of tissue structures. This step is a crucial part of the Stereo-seq experiment SOP and involves using the [**image QC**](../navigation-for-tools/stereo-seq-image-qc.md) tool to determine whether the image can be **automatically processed by SAW**. It is highly recommended to perform QC during the experiment to simplify subsequent image analysis. However, QC evaluation is also embedded within the **Image Processing module** for convenience. For detailed evaluation criteria, please refer to the [**Image QC** ](../navigation-for-tools/stereo-seq-image-qc.md)page.
+2. **Register image to spatial feature expression density heat map.** Align the microscope image with the spatial feature expression density map, ensuring correct orientation and scaling. If working with multiple immunofluorescence (IF) images, verify the registration of each image individually. Once registered, you can export the **intermediate processing result** (`.tar.gz`) and a **TIFF format registered image** (`.tif`), which can be used with third-party tools or algorithms for further processing, such as segmentation mask generation.
+3. **Define tissue and cell boundaries.** Use **interactive drawing tools**, <mark style="background-color:orange;">**parameter-adjustable semi-automatic tool**</mark>, or **import custom masks created in external software** to define ROI regions. For IF images, weak-intensity areas are likely **background noise**—adjust intensity thresholds to refine ROIs. Thus, pick intensity intervals to specify IF ROIs. Preecise region selection is essential to ensure high-quality data extraction while minimizing background interference.
+4. **Export operation recording file** and let SAW generate spatial feature expression matrices for the defined tissue regions or individual cells.
+
+The following pages will demonstrate the step-by-step processing instructions for Stereo-seq support image types. Please follow the guide that matches your request.
+
+## Accessing Image Processing
+
+StereoMap's Image Processing module can be accessed from the start page.
+
+<figure><img src="../../img/assets/home page-IP.png" alt=""><figcaption></figcaption></figure>
+
+Image Processing supports three image types, select the one that matches your image.
+
+<figure><img src="../../img/assets/IP step1.png" alt=""><figcaption></figcaption></figure>

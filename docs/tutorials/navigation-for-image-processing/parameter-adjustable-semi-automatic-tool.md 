@@ -1,0 +1,87 @@
+# Parameter-Adjustable Semi-Automatic Tool
+
+## What is a Parameter-Adjustable Semi-Automatic Tool
+
+A **Parameter-Adjustable Semi-Automatic Tool** is an image segmentation tool that **combines user-defined parameter adjustments with algorithm-driven automation**. It allows users to flexibly control the segmentation process by fine-tuning key parameters (e.g. thresholds, cell size, and intensity range) while leveraging algorithms for efficient batch processing. This type of tool sits between fully manual annotation (high precision but time-consuming) and fully automated methods (such as deep learning, which requires large datasets and may lack adaptability). It is particularly suitable for the following scenarios:
+
+* **Medium-scale data processing** — More efficient than manual annotation while avoiding errors from insufficient training data in fully automated tools.
+* **Diverse experimental conditions** – Flexible parameter tuning accommodates different staining types (DAPI, H\&E, multi-channel fluorescence) and varying cell densities (sparse vs. dense regions).
+* **Reproducibility** – Once parameters are set, parameters can be reused for consistent and repeatable segmentation results.
+
+This approach offers an ideal balance of **speed, flexibility, and precision**, making it a powerful tool for biological image analysis in research and clinical applications.
+
+## <mark style="background-color:orange;">Understanding Segmentation Parameters</mark>
+
+### （###########未完待续）
+
+### Setup parameters
+
+<table><thead><tr><th width="197">Parameter</th><th>Function</th></tr></thead><tbody><tr><td><strong>Requested pixel size</strong></td><td><em><strong>Float (0-100)</strong></em>. Choose pixel size at which detection will be performed. Higher values are likely to be faster, but may be less accurate. Set to 0 to use the full image resolution.<br><br><strong>Tip:</strong> If accuracy is critical, use a smaller value.</td></tr></tbody></table>
+
+### Nucleus parameters
+
+<table><thead><tr><th width="197">Parameter</th><th>Function</th></tr></thead><tbody><tr><td><strong>Background radius</strong></td><td><em><strong>Float (>=0)</strong></em>. Radius for background estimation, should be > the largest nuclues radius. Set to 0 to disable background correction. <br><br><strong>Tip:</strong> Set a higher value for dense cell images.</td></tr><tr><td><strong>Use opening by reconstruction</strong></td><td><em><strong>Boolean (yes or no)</strong></em>. Use opening-by-reconstructon for background estimation (default is "yes") . Opening by reconstruction tends to give a "better' background estimate. because it icorporates more information across the image tile used for cell detection. However in some cases (e.g. image with prominent folds, background staining, or other artifacts) this can cause problems, with the background estimate varying substantially between tiles.<br><br><strong>Tip:</strong> Turn off if background correction causes unexpected issues.</td></tr><tr><td><strong>Median filter radius</strong></td><td><em><strong>Float (>=0)</strong></em>. Radius of median filter used to reduce image texture.<br><br><strong>Tip:</strong> Increase this value for smoother segmentation in noisy images.</td></tr><tr><td><strong>Sigma</strong></td><td><em><strong>Float (>=0)</strong></em>. Sigma value for <strong>Gaussian filter</strong> used to reduce noise; increasing the value stops nuclei being fragmented, reduce the accuracy of boundaries.<br><br><strong>Tip:</strong> Use a smaller value if you need to detect small cells.</td></tr><tr><td><strong>Minimum area</strong></td><td><em><strong>Float (>=0)</strong></em>. Detected nuclei with an area &#x3C; minimum area will be discarded.<br><br><strong>Tip:</strong> Set a lower value for small-cell images to avoid losing valid nuclei.</td></tr><tr><td><strong>Maximum area</strong></td><td><em><strong>Float (>=0)</strong></em>. Detected nuclei with an area > maximum area will be discarded.<br> <br><strong>Tip:</strong> Increase for images with large cells.</td></tr></tbody></table>
+
+### Intensity parameters
+
+<table><thead><tr><th width="197">Parameter</th><th>Function</th></tr></thead><tbody><tr><td><strong>Threshold</strong></td><td><em><strong>Float (0-255)</strong></em>. Intensity threshold. The detected nuclei must have a mean intensity >threshold.<br><br><strong>Tip:</strong> Lower the threshold for weakly stained images.</td></tr><tr><td><strong>Smooth boundaries</strong></td><td><em><strong>Boolean (yes or no)</strong></em>. Smooth the detected nucleus/cell boundaries (default is "yes"). If disabled, edges may appear jagged. <br><strong>Tip:</strong> Enable this for cleaner segmentation masks.</td></tr></tbody></table>
+
+## Tips to Optimizing Segmentation Results
+
+### Recommended order for fine-tuning parameters
+
+Start with smaller sections to fine-tune your parameters, as this speeds up computation and allows quicker visualization of results.
+
+{% hint style="info" %}
+Be aware that the automated tool **only updates the segmentation within your selected region**, so cells at the edges of the selection box will have **rigid boundaries**.&#x20;
+
+To avoid this issue, you can either select the entire tissue region to ensure smooth segmentation across the tissue, or **use the drawing tools** to fix any misclassified cells while maintaining the accuracy of the rest of the segmentation.
+{% endhint %}
+
+1. **Threshold**
+   * <mark style="background-color:orange;">Distinguish cell nuclei from the background.</mark>
+2. <mark style="background-color:orange;">**Background Radius**</mark>
+   * <mark style="background-color:orange;">Controls background estimation, affecting overall signal balance.</mark>
+   * <mark style="background-color:orange;">**Sparse Tissue:**</mark> <mark style="background-color:orange;"></mark><mark style="background-color:orange;">Use a</mark> <mark style="background-color:orange;"></mark><mark style="background-color:orange;">**larger**</mark> <mark style="background-color:orange;"></mark><mark style="background-color:orange;">radius for smoother background correction.</mark>
+   * <mark style="background-color:orange;">**Dense Tissue:**</mark> <mark style="background-color:orange;"></mark><mark style="background-color:orange;">Use a</mark> <mark style="background-color:orange;"></mark><mark style="background-color:orange;">**smaller**</mark> <mark style="background-color:orange;"></mark><mark style="background-color:orange;">radius to retain more details.</mark>
+3. **Sigma (Gaussian Smoothing)**
+   * <mark style="background-color:orange;">**Increase**</mark> <mark style="background-color:orange;"></mark><mark style="background-color:orange;">to reduce noise and smooth boundaries.</mark>
+   * <mark style="background-color:orange;">**Decrease**</mark> <mark style="background-color:orange;"></mark><mark style="background-color:orange;">to sharpen cell edges and more retain fine details, such as the boundaries between cells.</mark> &#x20;
+4. **Median Filter Radius**
+   * <mark style="background-color:orange;">**Increase**</mark> <mark style="background-color:orange;"></mark><mark style="background-color:orange;">to remove texture noise or small artifacts, but too high a value may lead to loss of cellular structures.</mark>
+5. **Minimum & Maximum Area**
+   * <mark style="background-color:orange;">Adjust the cell size range to exclude artifacts or misdetections.</mark>&#x20;
+
+### Different staining types
+
+Generally, **Watershed segmentation algorithm** performs better on **grayscale images** (e.g. ssDNA, DAPI, IF) compared to color images (e.g. H\&E). This is because the algorithm treats the image as a topographic surface, where high intensity denotes peaks and low intensity denotes valleys. In grayscale images, this relationship is straightforward, making segmentation more effective. ([docs.opencv.org](https://docs.opencv.org/4.x/d3/db4/tutorial_py_watershed.html?utm_source=chatgpt.com))
+
+In contrast, **color images** have multiple channels (e.g. red, green, blue), which can complicate segmentation. To simplify the process, color images are often converted to grayscale before applying the Watershed algorithm.&#x20;
+
+#### For grayscale images
+
+* <mark style="background-color:orange;">**Threshold**</mark><mark style="background-color:orange;">: Set a</mark> <mark style="background-color:orange;"></mark><mark style="background-color:orange;">**higher**</mark> <mark style="background-color:orange;"></mark><mark style="background-color:orange;">intensity threshold to separate cell nuclei from the background effectively.</mark>
+* <mark style="background-color:orange;">**Minimum/Maximum Area**</mark><mark style="background-color:orange;">: Adjust based on the expected cell size to filter out noise and artifacts.</mark>
+
+#### For color images
+
+* <mark style="background-color:orange;">**Sigma**</mark><mark style="background-color:orange;">:</mark> <mark style="background-color:orange;"></mark><mark style="background-color:orange;">**Increase**</mark> <mark style="background-color:orange;"></mark><mark style="background-color:orange;">to reduce noise and smooth image boundaries.</mark>&#x20;
+* <mark style="background-color:orange;">**Median Filter Radius**</mark><mark style="background-color:orange;">: Adjust to remove texture-related noise and enhance segmentation accuracy.</mark>
+
+### Dense vs. sparse cell regions
+
+#### For dense cell regions:
+
+* <mark style="background-color:orange;">**Background Radius**</mark><mark style="background-color:orange;">: Use a</mark> <mark style="background-color:orange;"></mark><mark style="background-color:orange;">**smaller**</mark> <mark style="background-color:orange;"></mark><mark style="background-color:orange;">background radius to preserve fine details.</mark>
+* <mark style="background-color:orange;">**Maximum Area**</mark><mark style="background-color:orange;">: Lower the value to prevent cell merging.</mark>
+
+#### For sparse cell regions:
+
+* <mark style="background-color:orange;">**Background Radius**</mark><mark style="background-color:orange;">: Use a</mark> <mark style="background-color:orange;"></mark><mark style="background-color:orange;">**larger**</mark> <mark style="background-color:orange;"></mark><mark style="background-color:orange;">background radius to effectively subtrack large-scale background variantions.</mark>
+* <mark style="background-color:orange;">**Minimum Area**</mark><mark style="background-color:orange;">: Increase cell size to reduce background noise misidentification.</mark>
+
+## **Troubleshooting & Frequently Asked Questions**
+
+### Q: Why the default parameter settings changed for different image?
+
+A: For **Automated segmentation - Watershed**, the pixel size of a image is a key characteristic which determines how physical dimensions are represented in the image, and therefore, affect the recommend value of other parameters.&#x20;

@@ -8,13 +8,22 @@ require(['gitbook', 'jquery'], function(gitbook, $) {
     gitbook.events.bind('page.change', function() {
         $.map(opts, function(ele) {
             $(ele).each((index, value) => {
-                if(value.attributes.getNamedItem('href')){
-                    const href = value.attributes.getNamedItem('href').value.toLowerCase()
+                const attr = value.attributes.getNamedItem('href');
+                if(attr){
+                    const href = attr.value.toLowerCase()
+                    // console.log(href)
                     
                     if( href.match(/^(?!.*png)(?!.*html)(?!.*\#)(?!.*http).*$/)){
-                        value.attributes.getNamedItem('href').value += href.match(/\/$/) ? 'index.html' : '/index.html'
+                        attr.value += href.match(/\/$/) ? 'index.html' : '/index.html'
+                    } else if(href.match(/^(?!#).*$/) && href.match(/^.*\#.*$/) && href.match(/^(?!.*html\#).*$/)){
+                        console.log('*******222', href)
+                        // 优化判断：如果包含"/#"，则替换"/#"为"/index.html#"，否则替换第一个"#"为"/index.html#"
+                        if(href.indexOf('/#') !== -1){
+                            attr.value = href.replace('#', 'index.html#');
+                        } else {
+                            attr.value = href.replace('#', '/index.html#');
+                        }
                     }
-                    
                 }
             });
         });
