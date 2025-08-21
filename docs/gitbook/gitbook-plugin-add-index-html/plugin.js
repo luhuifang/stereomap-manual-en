@@ -16,7 +16,12 @@ require(['gitbook', 'jquery'], function(gitbook, $) {
                     if( href.match(/^(?!.*png)(?!.*html)(?!.*\#)(?!.*http).*$/)){
                         attr.value += href.match(/\/$/) ? 'index.html' : '/index.html'
                     } else if(href.match(/^(?!#).*$/) && href.match(/^.*\#.*$/) && href.match(/^(?!.*html\#).*$/)){
-                        console.log('*******222', href)
+
+                        //如果链接是bgipan.geomics.cn，则不做替换
+                        if(href.indexOf('bgipan.genomics.cn') !== -1){
+                            return;
+                        }
+
                         // 优化判断：如果包含"/#"，则替换"/#"为"/index.html#"，否则替换第一个"#"为"/index.html#"
                         if(href.indexOf('/#') !== -1){
                             attr.value = href.replace('#', 'index.html#');

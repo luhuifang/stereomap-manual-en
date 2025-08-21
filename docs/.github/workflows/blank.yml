@@ -104,7 +104,7 @@ jobs:
         working-directory: /Users/huifang/github/build_software_manual/StereoMap
         run: |
           mv _book docs
-          grep mark{background:#ff0 -rl docs | xargs sed -i '' 's/mark{background:#ff0/mark{background:#fff/g'
+          grep mark{background:#fff -rl docs | xargs sed -i '' 's/mark{background:#fff/mark{background:#fff/g'
 
           if [ -e docs/img/assets ]; then 
             mv docs/.gitbook docs/img 
