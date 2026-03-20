@@ -1,0 +1,62 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Test command
+
+on:
+  workflow_dispatch:
+
+# env:
+#   ROOT_DIR: /Users/huifang/github/build_software_manual
+#   NODE_MODULES_DIR: /Users/huifang/github/node_modules
+
+env:
+  NODE_VERSION: '16.16.0'
+  NVM_DIR: '/Users/huifang/.nvm'
+  NODE_PATH: '/Users/huifang/.nvm/versions/node/v16.16.0/bin'
+  PATH: '/Users/huifang/.nvm/versions/node/v16.16.0/bin:$PATH'
+
+defaults:
+  run:
+    shell: bash
+    working-directory: /Users/huifang/github/build_software_manual
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  test-gitbook:
+    name: Test GitBook Commands
+    runs-on: self-hosted
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      # - uses: actions/checkout@${{ inputs.branch }}
+
+      # Enter directory of codes
+    #   - name: Enter dir
+    #     run: mkdir -p $ROOT_DIR && cd $ROOT_DIR
+
+    #   # PWD
+    #   - name: PWD
+    #     run: |
+    #       pwd
+    #       /Users/huifang/.nvm/versions/node/v16.16.0/bin/gitbook help
+
+      - name: Setup NVM environment
+        run: |
+          echo "Setting up NVM environment..."
+          export NVM_DIR="${{ env.NVM_DIR }}"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          
+          # Verify Node.js installation
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+          echo "NVM version: $(nvm --version)"
+          
+      - name: Test GitBook
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Using GitBook from: $(which gitbook)"
+          ${{ env.NODE_PATH }}/gitbook help
+
+

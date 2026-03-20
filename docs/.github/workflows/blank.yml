@@ -24,9 +24,10 @@ on:
 
 
 env:
-  ROOT_DIR: /Users/huifang/github/build_software_manual
   NODE_MODULES_DIR: /Users/huifang/github/node_modules
-  GITBOOK: /Users/huifang/.nvm/versions/node/v16.16.0/bin/gitbook
+  NVM_DIR: '/Users/huifang/.nvm'
+  NODE_PATH: '/Users/huifang/.nvm/versions/node/v16.16.0/bin'
+  PATH: '/Users/huifang/.nvm/versions/node/v16.16.0/bin:/bin:/usr/bin::$PATH'
 
 defaults:
   run:
@@ -87,17 +88,17 @@ jobs:
       # Copy node_modules 
       - name: Copy node_modules
         working-directory: /Users/huifang/github/build_software_manual/StereoMap
-        run: cp -r $NODE_MODULES_DIR ./
+        run: cp -r ${{ env.NODE_MODULES_DIR }} ./
 
       # # Replace H\&E to H&E
       - name: Replace H\&E to H&E
         working-directory: /Users/huifang/github/build_software_manual/StereoMap
-        run: grep "H\\\&E" -rl --include="*.md" . | xargs  sed -i " " "s/H\\\&E/H\&E/g"
+        run: grep "H\\\&E" -rl --include="*.md" . | xargs  sed -i '' "s/H\\\&E/H\&E/g"
 
       # Runs a command to generate _book
       - name: Generate _book
         working-directory: /Users/huifang/github/build_software_manual/StereoMap
-        run: gitbook build
+        run: ${{ env.NODE_PATH }}/gitbook build
 
       # Replace 
       - name: Replace 
