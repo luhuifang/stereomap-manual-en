@@ -683,17 +683,17 @@
 <p><a href="../../tutorials/navigation-for-visual-explore.html#clustering-and-differential-expression-analysis">Differential expression (DE) analysis</a> identifies gene expression variations across different spot groups, such as clusters, lasso-defined spatial regions, or morphological zones. The analysis compares these groups to uncover key differences in gene expression. Results are dynamically linked to group selections and displayed in the Data Panel for interactive exploration.</p>
 <h2 id="select-comparison-groups-and-launch-analysis"><a name="select-comparison-groups-and-launch-analysis" class="anchor-navigation-ex-anchor" href="#select-comparison-groups-and-launch-analysis"><i class="fa fa-link" aria-hidden="true"></i></a>Select Comparison Groups and Launch Analysis</h2>
 <p>In Group mode, select the clusters you want to analyze for differential expression. If those clusters belong to different groups, use Selection mode to merge them into a custom group.</p>
-<div><figure><a href="../../img/assets/DEA%20-%20select%20method%20and%20omics.png" data-lightbox="9414ff11-b064-4345-9aa3-e5dd20e3dcda" data-title=""><img src="../../img/assets/DEA - select method and omics.png" alt=""></a><figcaption></figcaption></figure> <figure><a href="../../img/assets/DEA%20-%20add%20cluster%20to%20group.png" data-lightbox="9414ff11-b064-4345-9aa3-e5dd20e3dcda" data-title=""><img src="../../img/assets/DEA - add cluster to group.png" alt=""></a><figcaption></figcaption></figure></div>
+<div><figure><a href="../../img/assets/DEA%20-%20select%20method%20and%20omics.avif" data-lightbox="9414ff11-b064-4345-9aa3-e5dd20e3dcda" data-title=""><img src="../../img/assets/DEA - select method and omics.avif" alt=""></a><figcaption></figcaption></figure> <figure><a href="../../img/assets/DEA%20-%20add%20cluster%20to%20group.avif" data-lightbox="9414ff11-b064-4345-9aa3-e5dd20e3dcda" data-title=""><img src="../../img/assets/DEA - add cluster to group.avif" alt=""></a><figcaption></figcaption></figure></div>
 
 <p>Select at least two clusters and click <strong>Differential Expression Analysis</strong>. In the pop-up dialog, choose your analysis method and click <strong>Confirm</strong> to start the local computation. Two methods are available:</p>
 <ul>
 <li><strong>Label vs. others:</strong> Identify features differentially expressed between a specific cluster and all other clusters combined.</li>
 <li><strong>Label vs. label:</strong> Identify features that distinguish one cluster from each of the other clusters in the same group.</li>
 </ul>
-<figure><a href="../../img/assets/DEG%20-%20run%20analysis.png" data-lightbox="9414ff11-b064-4345-9aa3-e5dd20e3dcda" data-title=""><img src="../../img/assets/DEG - run analysis.png" alt=""></a><figcaption></figcaption></figure>
+<figure><a href="../../img/assets/DEG%20-%20run%20analysis.avif" data-lightbox="9414ff11-b064-4345-9aa3-e5dd20e3dcda" data-title=""><img src="../../img/assets/DEG - run analysis.avif" alt=""></a><figcaption></figcaption></figure>
 
 <p>For large datasets, you can export a CSV file (with the <strong>CSV for differential expression analysis</strong> option enabled) and pass it to the <code>SAW reanalyze diffExp</code> pipeline. Your file system will open so you can choose a location to save the output.</p>
-<figure><a href="../../img/assets/DEG%20-%20export%20DE%20csv.png" data-lightbox="9414ff11-b064-4345-9aa3-e5dd20e3dcda" data-title=""><img src="../../img/assets/DEG - export DE csv.png" alt=""></a><figcaption></figcaption></figure>
+<figure><a href="../../img/assets/DEG%20-%20export%20DE%20csv.avif" data-lightbox="9414ff11-b064-4345-9aa3-e5dd20e3dcda" data-title=""><img src="../../img/assets/DEG - export DE csv.avif" alt=""></a><figcaption></figcaption></figure>
 
 <p>Pass the CSV file path to <code>SAW reanalyze diffExp</code> pipeline through the <code>--diffexp-csv</code> argument to generate the analysis result. It is important to make the CSV available to both SAW and the computing environment where the pipeline is run.</p>
 <p>
@@ -706,13 +706,13 @@ SAW reanalyze diffExp \
 </p>
 <h2 id="view-the-result-and-create-gene-list"><a name="view-the-result-and-create-gene-list" class="anchor-navigation-ex-anchor" href="#view-the-result-and-create-gene-list"><i class="fa fa-link" aria-hidden="true"></i></a>View the Result and Create Gene List</h2>
 <p>Once the analysis has been finished, the result table will be show in the Data Panel. You can reorder the table by clicking the &#x201C;up&#x201D; and &#x201C;down&#x201D; arrows of log2 fold change (L2FC) or p-values of each gene and cluster to see the significant features.</p>
-<figure><a href="../../img/assets/DEG%20-%20data%20panel%20DE%20result.png" data-lightbox="9414ff11-b064-4345-9aa3-e5dd20e3dcda" data-title=""><img src="../../img/assets/DEG - data panel DE result.png" alt=""></a><figcaption></figcaption></figure>
+<figure><a href="../../img/assets/DEG%20-%20data%20panel%20DE%20result.avif" data-lightbox="9414ff11-b064-4345-9aa3-e5dd20e3dcda" data-title=""><img src="../../img/assets/DEG - data panel DE result.avif" alt=""></a><figcaption></figcaption></figure>
 
 <p>Clicking on a feature name in the table will reveal the corresponding gene expression distribution on the canvas in summarized heatmap. Additionally, for multiple features, you can explore their <a href="co-expression-of-selected-genes.html">co-expressed relationship</a> by showing them in multi-color mode.</p>
-<figure><a href="../../img/assets/DEG%20-%20add%20feature%20to%20custom%20list.png" data-lightbox="9414ff11-b064-4345-9aa3-e5dd20e3dcda" data-title=""><img src="../../img/assets/DEG - add feature to custom list.png" alt=""></a><figcaption></figcaption></figure>
+<figure><a href="../../img/assets/DEG%20-%20add%20feature%20to%20custom%20list.avif" data-lightbox="9414ff11-b064-4345-9aa3-e5dd20e3dcda" data-title=""><img src="../../img/assets/DEG - add feature to custom list.avif" alt=""></a><figcaption></figcaption></figure>
 
 <p>You can also download the results table for further analysis.</p>
-<figure><a href="../../img/assets/DEG%20-%20export%20result%20table.png" data-lightbox="9414ff11-b064-4345-9aa3-e5dd20e3dcda" data-title=""><img src="../../img/assets/DEG - export result table.png" alt=""></a><figcaption></figcaption></figure>
+<figure><a href="../../img/assets/DEG%20-%20export%20result%20table.avif" data-lightbox="9414ff11-b064-4345-9aa3-e5dd20e3dcda" data-title=""><img src="../../img/assets/DEG - export result table.avif" alt=""></a><figcaption></figcaption></figure>
 
 
 <footer class="page-footer"><span class="copyright">&#xA9; 2026 STOmics Tech. All rights reserved.</span><span class="footer-modification">Modified: 

@@ -694,12 +694,12 @@
 <ul>
 <li>If <code>SAW count</code> inputs do not contain the QC-failed image, the expression matrix lacks alignment with the microscope image. You need to perform morphology registration in Image processing Step 2.</li>
 </ul>
-<figure><a href="../../img/assets/SAW%20count%20+%20no%20image.png" data-lightbox="c0482836-ac91-4ae9-a325-ae02b5e86362" data-title=""><img src="../../img/assets/SAW count + no image.png" alt=""></a><figcaption></figcaption></figure>
+<figure><a href="../../img/assets/SAW%20count%20+%20no%20image.avif" data-lightbox="c0482836-ac91-4ae9-a325-ae02b5e86362" data-title=""><img src="../../img/assets/SAW count + no image.avif" alt=""></a><figcaption></figcaption></figure>
 
 <ul>
 <li>If the QC-failed image was input into <code>SAW count</code>, the pipeline will still place QC-failed images into <code>/outputs/visualiztion.tar</code> , but will not perform automatic registration. You also need to perform morphology registration in Image processing Step 2.</li>
 </ul>
-<figure><a href="../../img/assets/SAW%20count%20+%20qc%20failed%20image.png" data-lightbox="c0482836-ac91-4ae9-a325-ae02b5e86362" data-title=""><img src="../../img/assets/SAW count + qc failed image.png" alt=""></a><figcaption></figcaption></figure>
+<figure><a href="../../img/assets/SAW%20count%20+%20qc%20failed%20image.avif" data-lightbox="c0482836-ac91-4ae9-a325-ae02b5e86362" data-title=""><img src="../../img/assets/SAW count + qc failed image.avif" alt=""></a><figcaption></figcaption></figure>
 
 <h2 id="morphology-registration"><a name="morphology-registration" class="anchor-navigation-ex-anchor" href="#morphology-registration"><i class="fa fa-link" aria-hidden="true"></i></a>Morphology registration</h2>
 <p>When QC failed, <strong>SAW</strong> automated registration or <strong>StereoMap</strong> Feature Point registration becomes unavailable. Hence, Morphology registration becomes essential to align the expression matrix with the microscope image. Two functions are helpful:</p>
@@ -719,13 +719,13 @@
 <p>Depending on your analysis requirements, you can decide tissue &amp; cell segmentation methods after morphology registration. These diagrams explain <code>SAW realign</code> whether to use manual/third-party segmentation results or enable pipeline auto-segmentation.</p>
 <h3 id="timing-for-enabling-saw-pipeline-auto-segmentation"><a name="timing-for-enabling-saw-pipeline-auto-segmentation" class="anchor-navigation-ex-anchor" href="#timing-for-enabling-saw-pipeline-auto-segmentation"><i class="fa fa-link" aria-hidden="true"></i></a><strong>Timing for enabling SAW pipeline auto-segmentation</strong></h3>
 <p>If you skip Step 3 Tissue segmentation &amp; Step 4 Cell segmentation in <strong>StereoMap</strong> Image processing, <strong><code>SAW realign</code></strong>  will activate built-in automatic tissue and cell segmentation in the pipeline.</p>
-<figure><a href="../../img/assets/only%20registration.png" data-lightbox="c0482836-ac91-4ae9-a325-ae02b5e86362" data-title=""><img src="../../img/assets/only registration.png" alt=""></a><figcaption></figcaption></figure>
+<figure><a href="../../img/assets/only%20registration.avif" data-lightbox="c0482836-ac91-4ae9-a325-ae02b5e86362" data-title=""><img src="../../img/assets/only registration.avif" alt=""></a><figcaption></figcaption></figure>
 
 <p>If you complete Step 3 Tissue segmentation but skip Step 4 Cell segmentation in Image processing, <code>SAW realign</code>  will activate built-in cell segmentation in the pipeline.</p>
-<figure><a href="../../img/assets/registration+tissueseg.png" data-lightbox="c0482836-ac91-4ae9-a325-ae02b5e86362" data-title=""><img src="../../img/assets/registration+tissueseg.png" alt=""></a><figcaption></figcaption></figure>
+<figure><a href="../../img/assets/registration+tissueseg.avif" data-lightbox="c0482836-ac91-4ae9-a325-ae02b5e86362" data-title=""><img src="../../img/assets/registration+tissueseg.avif" alt=""></a><figcaption></figcaption></figure>
 
 <p>If you complete both manual/third-party tissue &amp; cell segmentation in Image processing, <code>SAW realign</code> directly uses segmentation results in the pipeline.</p>
-<figure><a href="../../img/assets/registration+tissueseg+cellseg.png" data-lightbox="c0482836-ac91-4ae9-a325-ae02b5e86362" data-title=""><img src="../../img/assets/registration+tissueseg+cellseg.png" alt=""></a><figcaption></figcaption></figure>
+<figure><a href="../../img/assets/registration+tissueseg+cellseg.avif" data-lightbox="c0482836-ac91-4ae9-a325-ae02b5e86362" data-title=""><img src="../../img/assets/registration+tissueseg+cellseg.avif" alt=""></a><figcaption></figcaption></figure>
 
 <h3 id="how-to-upload-third-party-segmentation-masks"><a name="how-to-upload-third-party-segmentation-masks" class="anchor-navigation-ex-anchor" href="#how-to-upload-third-party-segmentation-masks"><i class="fa fa-link" aria-hidden="true"></i></a><strong>How to upload third-party segmentation mask(s)</strong></h3>
 <ol>
@@ -737,7 +737,7 @@
 <li>Re-open Image processing upload Registered TAR.GZ in Step 1. Then import the corresponding <code>.stereo</code> file in Step 2 and <strong>directly click Next</strong>.</li>
 <li>Step 3 or 4: Import the segmentation mask results from the third-party tool and record them in the output processed TAR.GZ file.</li>
 </ol>
-<figure><a href="../../img/assets/3rd-party%20seg%20tools.png" data-lightbox="c0482836-ac91-4ae9-a325-ae02b5e86362" data-title=""><img src="../../img/assets/3rd-party seg tools.png" alt=""></a><figcaption></figcaption></figure>
+<figure><a href="../../img/assets/3rd-party%20seg%20tools.avif" data-lightbox="c0482836-ac91-4ae9-a325-ae02b5e86362" data-title=""><img src="../../img/assets/3rd-party seg tools.avif" alt=""></a><figcaption></figcaption></figure>
 
 <h2 id="saw-realign"><a name="saw-realign" class="anchor-navigation-ex-anchor" href="#saw-realign"><i class="fa fa-link" aria-hidden="true"></i></a>SAW realign</h2>
 <pre><code class="lang-shellscript">cd /saw/runs
