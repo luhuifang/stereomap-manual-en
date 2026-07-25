@@ -22,6 +22,7 @@ import html
 import json
 import re
 import sys
+from html.parser import HTMLParser
 from io import BytesIO
 from pathlib import Path
 from urllib.parse import quote, unquote
@@ -90,10 +91,19 @@ MALFORMED_ASSET_AMP_RX = re.compile(
     r'(?P<suffix>&(?:amp;)?[^"\'<>\r\n/]*\.(?:png|jpe?g))',
     re.IGNORECASE,
 )
+MALFORMED_PAREN_ASSET_RX = re.compile(
+    r'(?P<a_open><a\b[^>]*\bhref=")'
+    r'(?P<href>(?:\.\.?/)*(?:img/)?assets/[^"]*\([^"]*)'
+    r'(?P<a_middle>"[^>]*>\s*<img\b[^>]*\bsrc=")'
+    r'(?P<src>(?:\.\.?/)*(?:img/)?assets/[^"]*\([^"]*)'
+    r'(?P<a_close>"[^>]*>\s*</a>)'
+    r'\.(?P<ext>png|jpe?g|avif|svg|gif)&gt;\)',
+    re.IGNORECASE,
+)
 
 
 def repair_malformed_asset_refs(text_files, docs, dry_run):
-    """Remove a stray slash before '&' only when the repaired asset exists."""
+    """Repair known GitBook asset truncations only when the target exists."""
     overrides = {}
     repaired_files = 0
     repaired_refs = 0
@@ -114,6 +124,23 @@ def repair_malformed_asset_refs(text_files, docs, dry_run):
             return corrected
 
         normalized = MALFORMED_ASSET_AMP_RX.sub(repl, value)
+
+        def repl_parenthesized(match):
+            nonlocal file_repairs
+            suffix = ")." + match.group("ext")
+            href = match.group("href") + suffix
+            src = match.group("src") + suffix
+            target = resolve_ref(src, p, docs)
+            if target is None or not target.exists():
+                return match.group(0)
+            file_repairs += 1
+            return "".join((
+                match.group("a_open"), href,
+                match.group("a_middle"), src,
+                match.group("a_close"),
+            ))
+
+        normalized = MALFORMED_PAREN_ASSET_RX.sub(repl_parenthesized, normalized)
         if not file_repairs:
             continue
         overrides[p] = normalized
@@ -192,6 +219,28 @@ GATE_RX = re.compile(r"[\w\-. /%()&#;]*assets/[\w\-. /%()&#;]+\.(?:png|jpe?g|avi
                      re.IGNORECASE)
 
 
+class AssetAttributeParser(HTMLParser):
+    """Collect local asset references even when GitBook truncated the suffix."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.refs = []
+
+    def handle_starttag(self, _tag, attrs):
+        self._collect(attrs)
+
+    def handle_startendtag(self, _tag, attrs):
+        self._collect(attrs)
+
+    def _collect(self, attrs):
+        for name, value in attrs:
+            if name.lower() not in {"href", "src"} or not value:
+                continue
+            normalized = html.unescape(unquote(value)).replace("\\", "/").lower()
+            if "assets/" in normalized:
+                self.refs.append(value)
+
+
 def resolve_ref(ref, src_file, docs):
     ref = html.unescape(ref)
     ref = ref.split("?", 1)[0].split("#", 1)[0]
@@ -215,10 +264,15 @@ def gate_refs(text_files, docs):
             v = p.read_text(encoding="utf-8", errors="ignore")
         except OSError:
             continue
-        for m in GATE_RX.finditer(v):
-            target = resolve_ref(m.group(0), p, docs)
+        refs = {m.group(0) for m in GATE_RX.finditer(v)}
+        if p.suffix.lower() in {".html", ".htm"}:
+            parser = AssetAttributeParser()
+            parser.feed(v)
+            refs.update(parser.refs)
+        for ref in sorted(refs):
+            target = resolve_ref(ref, p, docs)
             if target is not None and not target.exists():
-                broken.append((p.relative_to(docs).as_posix(), m.group(0)))
+                broken.append((p.relative_to(docs).as_posix(), ref))
     return broken
 
 
