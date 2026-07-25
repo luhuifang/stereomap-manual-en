@@ -222,6 +222,19 @@ def gate_refs(text_files, docs):
     return broken
 
 
+def gate_avif_decode(docs):
+    """Decode every generated AVIF and return (checked_count, failures)."""
+    avif_files = sorted(docs.rglob("*.avif"))
+    failures = []
+    for path in avif_files:
+        try:
+            with Image.open(path) as image:
+                image.load()
+        except Exception as exc:
+            failures.append((path.relative_to(docs).as_posix(), str(exc)))
+    return len(avif_files), failures
+
+
 # ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
@@ -350,22 +363,31 @@ def main():
         after_tree = sum(p.stat().st_size for p in docs.rglob("*") if p.is_file())
         text_files_after = load_text_files(docs)
         broken = gate_refs(text_files_after, docs)
+        avif_checked, avif_failures = gate_avif_decode(docs)
         print(f"\n[result] tree {mib(before_tree):.1f} -> {mib(after_tree):.1f} MiB "
               f"(saved {mib(before_tree - after_tree):.1f} MiB, "
               f"{(1 - after_tree / before_tree) * 100:.0f}%)")
         print(f"[gate] index.html={'ok' if (docs / 'index.html').exists() else 'MISSING'}  "
               f"broken_refs={len(broken)}  budget={args.budget_mib} MiB -> "
               f"{'ok' if mib(after_tree) <= args.budget_mib else 'OVER'}")
+        print(f"[gate] avif_decode={avif_checked - len(avif_failures)}/{avif_checked} -> "
+              f"{'ok' if not avif_failures else 'FAILED'}")
         if broken:
             print("[gate] first broken refs:")
             for f, r in broken[:20]:
                 print(f"    {f} -> {r}")
+        if avif_failures:
+            print("[gate] first AVIF decode failures:")
+            for path, error in avif_failures[:20]:
+                print(f"    {path} -> {error}")
         report = {
             "before_mib": round(mib(before_tree), 2),
             "after_mib": round(mib(after_tree), 2),
             "referenced": len(referenced), "converted": len(converted_rel),
             "kept_png": len(kept_png), "unreferenced_deleted": len(unreferenced),
             "refs_rewritten": total_repl, "broken_refs": len(broken),
+            "avif_checked": avif_checked,
+            "avif_decode_failures": len(avif_failures),
             "quality": args.quality, "subsampling": args.subsampling,
         }
         # write report OUTSIDE docs/ (docs/ is shipped inside the installer)
@@ -375,6 +397,8 @@ def main():
         print(f"[report] wrote {report_path}")
         if broken:
             sys.exit("gate FAILED: broken image references remain")
+        if avif_failures:
+            sys.exit("gate FAILED: generated AVIF files failed to decode")
         if mib(after_tree) > args.budget_mib:
             sys.exit(f"gate FAILED: tree {mib(after_tree):.1f} MiB over budget {args.budget_mib}")
     else:
