@@ -47,24 +47,27 @@ def load_text_files(docs):
     return files
 
 
-def build_corpus(text_files):
+def build_corpus(text_files, text_overrides=None):
     """Lowercased corpus (url-decoded + html-unescaped + raw) for detection."""
+    text_overrides = text_overrides or {}
     parts = []
     for p in text_files:
-        try:
-            v = p.read_text(encoding="utf-8", errors="ignore")
-        except OSError:
-            continue
+        v = text_overrides.get(p)
+        if v is None:
+            try:
+                v = p.read_text(encoding="utf-8", errors="ignore")
+            except OSError:
+                continue
         parts.append(html.unescape(unquote(v)).replace("\\", "/").lower())
         parts.append(v.replace("\\", "/").lower())
     return "\n".join(parts)
 
 
-def detect_forms(rel_docs, rel_img, name):
+def detect_forms(rel_docs, rel_img):
     return {
-        rel_docs, rel_img, name,
-        quote(rel_docs), quote(rel_img), quote(name),
-        rel_docs.replace(" ", "%20"), rel_img.replace(" ", "%20"), name.replace(" ", "%20"),
+        rel_docs, rel_img,
+        quote(rel_docs), quote(rel_img),
+        rel_docs.replace(" ", "%20"), rel_img.replace(" ", "%20"),
     }
 
 
@@ -75,12 +78,50 @@ def classify(docs, corpus):
     for a in images:
         rel_docs = a.relative_to(docs).as_posix().lower()
         rel_img = a.relative_to(docs / "img").as_posix().lower()
-        name = a.name.lower()
-        if any(c and c in corpus for c in detect_forms(rel_docs, rel_img, name)):
+        if any(c and c in corpus for c in detect_forms(rel_docs, rel_img)):
             referenced.append(a)
         else:
             unreferenced.append(a)
     return referenced, unreferenced
+
+
+MALFORMED_ASSET_AMP_RX = re.compile(
+    r'(?P<prefix>(?:\.\.?/)*(?:img/)?assets/[^"\'<>\r\n/]*?)/'
+    r'(?P<suffix>&(?:amp;)?[^"\'<>\r\n/]*\.(?:png|jpe?g))',
+    re.IGNORECASE,
+)
+
+
+def repair_malformed_asset_refs(text_files, docs, dry_run):
+    """Remove a stray slash before '&' only when the repaired asset exists."""
+    overrides = {}
+    repaired_files = 0
+    repaired_refs = 0
+    for p in text_files:
+        try:
+            value = p.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        file_repairs = 0
+
+        def repl(match):
+            nonlocal file_repairs
+            corrected = match.group("prefix") + match.group("suffix")
+            target = resolve_ref(corrected, p, docs)
+            if target is None or not target.exists():
+                return match.group(0)
+            file_repairs += 1
+            return corrected
+
+        normalized = MALFORMED_ASSET_AMP_RX.sub(repl, value)
+        if not file_repairs:
+            continue
+        overrides[p] = normalized
+        repaired_files += 1
+        repaired_refs += file_repairs
+        if not dry_run:
+            p.write_text(normalized, encoding="utf-8")
+    return overrides, repaired_files, repaired_refs
 
 
 # ---------------------------------------------------------------------------
@@ -145,13 +186,16 @@ def build_rewriter(converted_rel_imgs):
 # ---------------------------------------------------------------------------
 # gates
 # ---------------------------------------------------------------------------
-GATE_RX = re.compile(r"[\w\-. /%()&]*assets/[\w\-. /%()&]+\.(?:png|jpe?g|avif|svg|gif)",
+# Include '#' and ';' so GitBook numeric entities such as &#x9875; remain
+# part of the reference and are decoded before the existence check.
+GATE_RX = re.compile(r"[\w\-. /%()&#;]*assets/[\w\-. /%()&#;]+\.(?:png|jpe?g|avif|svg|gif)",
                      re.IGNORECASE)
 
 
 def resolve_ref(ref, src_file, docs):
-    ref = ref.split("?")[0].split("#")[0]
-    ref = html.unescape(unquote(ref)).replace("\\", "/")
+    ref = html.unescape(ref)
+    ref = ref.split("?", 1)[0].split("#", 1)[0]
+    ref = unquote(ref).replace("\\", "/")
     if ref.startswith("data:") or "://" in ref:
         return None
     cand = (src_file.parent / ref)
@@ -207,7 +251,14 @@ def main():
         sys.exit("error: pillow-avif-plugin not available (pip install pillow-avif-plugin)")
 
     text_files = load_text_files(docs)
-    corpus = build_corpus(text_files)
+    text_overrides, repaired_files, repaired_refs = repair_malformed_asset_refs(
+        text_files, docs, args.dry_run
+    )
+    if repaired_refs:
+        action = "would fix" if args.dry_run else "fixed"
+        print(f"[repair] malformed asset refs {action}={repaired_refs} "
+              f"files={repaired_files}")
+    corpus = build_corpus(text_files, text_overrides)
     referenced, unreferenced = classify(docs, corpus)
 
     def total(paths):
@@ -274,10 +325,12 @@ def main():
         print(f"[rewrite] files updated={rewritten_files}  refs rewritten={total_repl}")
     elif rewrite and args.dry_run:
         for p in text_files:
-            try:
-                v = p.read_text(encoding="utf-8", errors="ignore")
-            except OSError:
-                continue
+            v = text_overrides.get(p)
+            if v is None:
+                try:
+                    v = p.read_text(encoding="utf-8", errors="ignore")
+                except OSError:
+                    continue
             n = len(rx.findall(v))
             if n:
                 rewritten_files += 1
