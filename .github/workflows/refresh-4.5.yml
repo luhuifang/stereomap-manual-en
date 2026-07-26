@@ -89,20 +89,23 @@ jobs:
             exit 1
           fi
 
-          unexpected_untracked="$(git ls-files --others --exclude-standard)"
+          unexpected_untracked="$(
+            git ls-files --others --exclude-standard -- . ":(exclude)docs/**"
+          )"
           if [[ -n "$unexpected_untracked" ]]; then
             echo "Refresh created unexpected untracked files:" >&2
             echo "$unexpected_untracked" >&2
             exit 1
           fi
 
-          if git diff --quiet -- docs; then
+          docs_status="$(git status --porcelain=v1 --untracked-files=all -- docs)"
+          if [[ -z "$docs_status" ]]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "Optimized 4.5 already matches main $SOURCE_SHA." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "Optimized 4.5 will be updated from main $SOURCE_SHA." >> "$GITHUB_STEP_SUMMARY"
-            git diff --stat -- docs
+            echo "$docs_status"
           fi
 
       - name: Commit and publish optimized docs
