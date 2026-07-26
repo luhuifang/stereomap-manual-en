@@ -67,6 +67,14 @@ jobs:
           cache: pip
           cache-dependency-path: tools/requirements-avif.txt
 
+      - name: Restore AVIF content cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/manual-avif-cache
+          key: manual-avif-${{ runner.os }}-${{ hashFiles('tools/optimize_manual_avif.py', 'tools/refresh_manual_avif.py', 'tools/requirements-avif.txt') }}-${{ steps.refs.outputs.source_sha }}
+          restore-keys: |
+            manual-avif-${{ runner.os }}-${{ hashFiles('tools/optimize_manual_avif.py', 'tools/refresh_manual_avif.py', 'tools/requirements-avif.txt') }}-
+
       - name: Install AVIF tooling
         run: python -m pip install -r tools/requirements-avif.txt
 
@@ -80,7 +88,8 @@ jobs:
           python tools/refresh_manual_avif.py \
             --source-ref "$SOURCE_SHA" \
             --target-branch "4.5" \
-            --staging-root "$RUNNER_TEMP/manual-refresh"
+            --staging-root "$RUNNER_TEMP/manual-refresh" \
+            --cache-dir "$RUNNER_TEMP/manual-avif-cache"
 
           git diff --check
           if ! git diff --quiet -- . ":(exclude)docs/**"; then
