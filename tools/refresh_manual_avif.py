@@ -148,6 +148,8 @@ def optimize_snapshot(repo, staged_worktree, args):
         str(args.budget_mib),
         "--delete-unreferenced",
     ]
+    if args.cache_dir:
+        command.extend(("--cache-dir", str(args.cache_dir)))
     run_command(command, capture=False)
 
     report_path = staged_worktree / "_avif_report.json"
@@ -211,6 +213,12 @@ def refresh(args):
         staging_root.mkdir(parents=True, exist_ok=True)
         if is_within(staging_root, repo):
             raise RefreshError("--staging-root must be outside the target repository")
+
+    if args.cache_dir:
+        args.cache_dir = args.cache_dir.resolve()
+        if is_within(args.cache_dir, repo):
+            raise RefreshError("--cache-dir must be outside the target repository")
+        args.cache_dir.mkdir(parents=True, exist_ok=True)
 
     temp_root = Path(
         tempfile.mkdtemp(
@@ -277,6 +285,11 @@ def parse_args():
     parser.add_argument("--subsampling", default="4:4:4")
     parser.add_argument("--speed", type=int, default=6)
     parser.add_argument("--budget-mib", type=float, default=80.0)
+    parser.add_argument(
+        "--cache-dir",
+        type=Path,
+        help="optional persistent content-addressed AVIF cache outside the repository",
+    )
     parser.add_argument(
         "--dry-run",
         action="store_true",

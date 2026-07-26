@@ -18,9 +18,13 @@ Usage:
 Requires: Pillow >= 10 and pillow-avif-plugin.
 """
 import argparse
+import hashlib
 import html
+import importlib.metadata
 import json
+import os
 import re
+import shutil
 import sys
 from html.parser import HTMLParser
 from io import BytesIO
@@ -38,6 +42,7 @@ except Exception:
 TEXT_EXTS = {".html", ".css", ".js", ".json", ".svg", ".xml", ".md", ".txt", ".map"}
 RASTER_EXTS = {".png", ".jpg", ".jpeg"}
 IMG_ANCHOR = "assets/"  # all manual images live under img/assets/
+CACHE_SCHEMA = "manual-avif-cache-v1"
 
 
 # ---------------------------------------------------------------------------
@@ -296,6 +301,93 @@ def mib(n):
     return n / 2 ** 20
 
 
+def file_sha256(path):
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def build_cache_fingerprint(args):
+    fields = (
+        CACHE_SCHEMA,
+        f"Pillow={importlib.metadata.version('Pillow')}",
+        f"pillow-avif-plugin={importlib.metadata.version('pillow-avif-plugin')}",
+        f"quality={args.quality}",
+        f"subsampling={args.subsampling}",
+        f"speed={args.speed}",
+    )
+    return "\0".join(fields)
+
+
+def image_cache_key(path, fingerprint):
+    digest = hashlib.sha256(fingerprint.encode("utf-8"))
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def cache_entry_paths(cache_dir, key):
+    entry_dir = cache_dir / key[:2]
+    return entry_dir / f"{key}.avif", entry_dir / f"{key}.json"
+
+
+def discard_cache_entry(*paths):
+    for path in paths:
+        try:
+            path.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
+def load_cached_avif(cache_dir, key, original_bytes):
+    avif_path, metadata_path = cache_entry_paths(cache_dir, key)
+    existed = avif_path.exists() or metadata_path.exists()
+    if not existed:
+        return None, False
+    try:
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        if metadata.get("schema") != CACHE_SCHEMA or metadata.get("key") != key:
+            raise ValueError("cache metadata identity mismatch")
+        cached_bytes = int(metadata["bytes"])
+        if cached_bytes <= 0 or cached_bytes >= original_bytes:
+            raise ValueError("cached AVIF no longer beats the original")
+        if avif_path.stat().st_size != cached_bytes:
+            raise ValueError("cached AVIF size mismatch")
+        if file_sha256(avif_path) != metadata.get("sha256"):
+            raise ValueError("cached AVIF checksum mismatch")
+        return avif_path, False
+    except (OSError, TypeError, ValueError, KeyError, json.JSONDecodeError):
+        discard_cache_entry(avif_path, metadata_path)
+        return None, True
+
+
+def publish_cached_avif(cache_dir, key, data):
+    avif_path, metadata_path = cache_entry_paths(cache_dir, key)
+    avif_path.parent.mkdir(parents=True, exist_ok=True)
+    metadata = {
+        "schema": CACHE_SCHEMA,
+        "key": key,
+        "bytes": len(data),
+        "sha256": hashlib.sha256(data).hexdigest(),
+    }
+    avif_tmp = avif_path.with_name(f".{avif_path.name}.{os.getpid()}.tmp")
+    metadata_tmp = metadata_path.with_name(
+        f".{metadata_path.name}.{os.getpid()}.tmp"
+    )
+    try:
+        avif_tmp.write_bytes(data)
+        os.replace(avif_tmp, avif_path)
+        metadata_tmp.write_text(
+            json.dumps(metadata, sort_keys=True), encoding="utf-8"
+        )
+        os.replace(metadata_tmp, metadata_path)
+    finally:
+        discard_cache_entry(avif_tmp, metadata_tmp)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -304,6 +396,8 @@ def main():
     ap.add_argument("--subsampling", default="4:4:4")
     ap.add_argument("--speed", type=int, default=6)
     ap.add_argument("--budget-mib", type=float, default=80.0)
+    ap.add_argument("--cache-dir", type=Path,
+                    help="optional content-addressed AVIF cache outside docs/")
     ap.add_argument("--delete-unreferenced", action="store_true",
                     help="actually delete unreferenced images (default: report only)")
     ap.add_argument("--dry-run", action="store_true",
@@ -316,6 +410,19 @@ def main():
         sys.exit(f"error: {docs} does not look like a manual docs dir (no index.html)")
     if not AVIF_OK and not args.dry_run:
         sys.exit("error: pillow-avif-plugin not available (pip install pillow-avif-plugin)")
+
+    cache_dir = args.cache_dir.resolve() if args.cache_dir else None
+    cache_fingerprint = None
+    if cache_dir:
+        try:
+            cache_dir.relative_to(docs)
+        except ValueError:
+            pass
+        else:
+            sys.exit("error: --cache-dir must be outside docs/")
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        cache_fingerprint = build_cache_fingerprint(args)
+        print(f"[cache] directory={cache_dir} schema={CACHE_SCHEMA}")
 
     text_files = load_text_files(docs)
     text_overrides, repaired_files, repaired_refs = repair_malformed_asset_refs(
@@ -341,12 +448,33 @@ def main():
     converted_rel = []        # img-rel posix that became .avif
     kept_png = []             # referenced but avif not smaller
     src_bytes = avif_bytes = 0
+    cache_hits = cache_misses = cache_writes = cache_invalid = 0
+    cache_write_failures = images_encoded = 0
     for i, img_path in enumerate(to_process, 1):
         rel_img = img_path.relative_to(docs / "img").as_posix()
         ob = img_path.stat().st_size
         src_bytes += ob
+        cache_key = None
+        if cache_dir:
+            cache_key = image_cache_key(img_path, cache_fingerprint)
+            cached_path, invalid = load_cached_avif(cache_dir, cache_key, ob)
+            if invalid:
+                cache_invalid += 1
+            if cached_path is not None:
+                nb = cached_path.stat().st_size
+                converted_rel.append(rel_img)
+                avif_bytes += nb
+                cache_hits += 1
+                if not args.dry_run:
+                    shutil.copyfile(cached_path, img_path.with_suffix(".avif"))
+                    img_path.unlink()
+                if i % 50 == 0:
+                    print(f"  ... {i}/{len(to_process)} processed")
+                continue
+            cache_misses += 1
         try:
-            im = Image.open(img_path).convert("RGB")
+            with Image.open(img_path) as source_image:
+                im = source_image.convert("RGB")
         except Exception as e:
             print(f"  [skip] {rel_img}: unreadable ({e})")
             kept_png.append(img_path)
@@ -355,23 +483,36 @@ def main():
         buf = BytesIO()
         im.save(buf, "AVIF", quality=args.quality, speed=args.speed,
                 subsampling=args.subsampling)
+        images_encoded += 1
         nb = buf.tell()
         if nb < ob:
             converted_rel.append(rel_img)
             avif_bytes += nb
             if not args.dry_run:
+                data = buf.getvalue()
                 out = img_path.with_suffix(".avif")
-                out.write_bytes(buf.getvalue())
+                out.write_bytes(data)
                 img_path.unlink()
+                if cache_dir:
+                    try:
+                        publish_cached_avif(cache_dir, cache_key, data)
+                        cache_writes += 1
+                    except OSError as exc:
+                        cache_write_failures += 1
+                        print(f"  [cache-warning] {rel_img}: {exc}")
         else:
             kept_png.append(img_path)
             avif_bytes += ob
         if i % 50 == 0:
-            print(f"  ... {i}/{len(to_process)} encoded")
+            print(f"  ... {i}/{len(to_process)} processed")
 
     print(f"[convert] referenced processed={len(to_process)}  ->avif={len(converted_rel)} "
           f"({mib(src_bytes):.1f}->{mib(avif_bytes - sum(p.stat().st_size for p in kept_png)):.1f} MiB)  "
           f"kept-png={len(kept_png)}")
+    if cache_dir:
+        print(f"[cache] hits={cache_hits} misses={cache_misses} "
+              f"encoded={images_encoded} writes={cache_writes} "
+              f"invalid={cache_invalid} write_failures={cache_write_failures}")
 
     # ---- rewrite references ----
     rx, rewrite = build_rewriter(converted_rel)
@@ -443,6 +584,12 @@ def main():
             "avif_checked": avif_checked,
             "avif_decode_failures": len(avif_failures),
             "quality": args.quality, "subsampling": args.subsampling,
+            "speed": args.speed, "cache_enabled": cache_dir is not None,
+            "cache_schema": CACHE_SCHEMA if cache_dir else None,
+            "cache_hits": cache_hits, "cache_misses": cache_misses,
+            "cache_writes": cache_writes, "cache_invalid": cache_invalid,
+            "cache_write_failures": cache_write_failures,
+            "images_encoded": images_encoded,
         }
         # write report OUTSIDE docs/ (docs/ is shipped inside the installer)
         report_path = docs.parent / "_avif_report.json"
