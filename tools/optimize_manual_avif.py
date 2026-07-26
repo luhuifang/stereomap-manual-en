@@ -8,8 +8,10 @@ What it does, in-place on a ``docs/`` directory:
      AVIF is NOT smaller than the original, the original is kept untouched.
   3. Rewrite every reference (.png/.jpg/.jpeg -> .avif) for converted images,
      handling spaces / & / parentheses / CJK via URL-encoding and HTML-entity forms.
-  4. Delete unreferenced images.
-  5. Gates: index.html exists, no broken image references, size within budget.
+  4. Keep GitBook's add-index-html plugin from rewriting lightbox asset links.
+  5. Delete unreferenced images.
+  6. Gates: index.html exists, no broken image references, lightbox links are
+     runtime-safe, and size is within budget.
 
 Usage:
   python optimize_manual_avif.py --docs <docs_dir> [--dry-run] [--quality 85]
@@ -43,6 +45,19 @@ TEXT_EXTS = {".html", ".css", ".js", ".json", ".svg", ".xml", ".md", ".txt", ".m
 RASTER_EXTS = {".png", ".jpg", ".jpeg"}
 IMG_ANCHOR = "assets/"  # all manual images live under img/assets/
 CACHE_SCHEMA = "manual-avif-cache-v1"
+ADD_INDEX_HTML_PLUGIN = Path(
+    "gitbook/gitbook-plugin-add-index-html/plugin.js"
+)
+LIGHTBOX_GUARD_MARKER = "value.hasAttribute('data-lightbox')"
+LIGHTBOX_LOOP_ANCHOR = """            $(ele).each((index, value) => {
+                const attr = value.attributes.getNamedItem('href');
+"""
+LIGHTBOX_LOOP_WITH_GUARD = """            $(ele).each((index, value) => {
+                if(value.hasAttribute('data-lightbox')){
+                    return;
+                }
+                const attr = value.attributes.getNamedItem('href');
+"""
 
 
 # ---------------------------------------------------------------------------
@@ -156,6 +171,29 @@ def repair_malformed_asset_refs(text_files, docs, dry_run):
     return overrides, repaired_files, repaired_refs
 
 
+def ensure_lightbox_asset_guard(docs, dry_run):
+    """Prevent add-index-html from treating lightbox assets as page links."""
+    plugin_path = docs / ADD_INDEX_HTML_PLUGIN
+    if not plugin_path.is_file():
+        raise ValueError(f"missing GitBook plugin: {ADD_INDEX_HTML_PLUGIN}")
+    value = plugin_path.read_text(encoding="utf-8")
+    if LIGHTBOX_GUARD_MARKER in value:
+        return False
+    if value.count(LIGHTBOX_LOOP_ANCHOR) != 1:
+        raise ValueError(
+            "unexpected add-index-html plugin structure; refusing unsafe patch"
+        )
+    updated = value.replace(
+        LIGHTBOX_LOOP_ANCHOR, LIGHTBOX_LOOP_WITH_GUARD, 1
+    )
+    if not updated.endswith("\n"):
+        updated += "\n"
+    if not dry_run:
+        with plugin_path.open("w", encoding="utf-8", newline="\n") as handle:
+            handle.write(updated)
+    return True
+
+
 # ---------------------------------------------------------------------------
 # reference rewrite
 # ---------------------------------------------------------------------------
@@ -246,6 +284,21 @@ class AssetAttributeParser(HTMLParser):
                 self.refs.append(value)
 
 
+class LightboxAnchorParser(HTMLParser):
+    """Collect href values from anchors handled by GitBook Lightbox."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.refs = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag.lower() != "a":
+            return
+        values = {name.lower(): value for name, value in attrs}
+        if "data-lightbox" in values and values.get("href"):
+            self.refs.append(values["href"])
+
+
 def resolve_ref(ref, src_file, docs):
     ref = html.unescape(ref)
     ref = ref.split("?", 1)[0].split("#", 1)[0]
@@ -292,6 +345,53 @@ def gate_avif_decode(docs):
         except Exception as exc:
             failures.append((path.relative_to(docs).as_posix(), str(exc)))
     return len(avif_files), failures
+
+
+def gate_lightbox_runtime(text_files, docs):
+    """Verify add-index-html cannot turn lightbox assets into page paths."""
+    failures = []
+    plugin_path = docs / ADD_INDEX_HTML_PLUGIN
+    try:
+        plugin = plugin_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        return 0, [(ADD_INDEX_HTML_PLUGIN.as_posix(), str(exc))]
+
+    loop_pos = plugin.find("$(ele).each((index, value) => {")
+    guard_pos = plugin.find(LIGHTBOX_GUARD_MARKER, loop_pos)
+    mutation_pos = plugin.find("attr.value +=", loop_pos)
+    if (
+        loop_pos < 0
+        or guard_pos < 0
+        or mutation_pos < 0
+        or guard_pos > mutation_pos
+    ):
+        failures.append((
+            ADD_INDEX_HTML_PLUGIN.as_posix(),
+            "data-lightbox guard is missing or runs after href mutation",
+        ))
+
+    checked = 0
+    for path in text_files:
+        if path.suffix.lower() not in {".html", ".htm"}:
+            continue
+        try:
+            value = path.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        parser = LightboxAnchorParser()
+        parser.feed(value)
+        for ref in parser.refs:
+            checked += 1
+            if re.search(
+                r"\.(?:png|jpe?g|avif|svg|gif)/index\.html(?:[?#]|$)",
+                ref,
+                re.IGNORECASE,
+            ):
+                failures.append((
+                    path.relative_to(docs).as_posix(),
+                    f"lightbox asset was rewritten as a page path: {ref}",
+                ))
+    return checked, failures
 
 
 # ---------------------------------------------------------------------------
@@ -410,6 +510,16 @@ def main():
         sys.exit(f"error: {docs} does not look like a manual docs dir (no index.html)")
     if not AVIF_OK and not args.dry_run:
         sys.exit("error: pillow-avif-plugin not available (pip install pillow-avif-plugin)")
+
+    try:
+        lightbox_plugin_patched = ensure_lightbox_asset_guard(docs, args.dry_run)
+    except (OSError, ValueError) as exc:
+        sys.exit(f"error: {exc}")
+    if lightbox_plugin_patched:
+        action = "would patch" if args.dry_run else "patched"
+        print(f"[repair] add-index-html lightbox guard {action}")
+    else:
+        print("[repair] add-index-html lightbox guard already present")
 
     cache_dir = args.cache_dir.resolve() if args.cache_dir else None
     cache_fingerprint = None
@@ -559,6 +669,9 @@ def main():
         text_files_after = load_text_files(docs)
         broken = gate_refs(text_files_after, docs)
         avif_checked, avif_failures = gate_avif_decode(docs)
+        lightbox_checked, lightbox_failures = gate_lightbox_runtime(
+            text_files_after, docs
+        )
         print(f"\n[result] tree {mib(before_tree):.1f} -> {mib(after_tree):.1f} MiB "
               f"(saved {mib(before_tree - after_tree):.1f} MiB, "
               f"{(1 - after_tree / before_tree) * 100:.0f}%)")
@@ -567,6 +680,8 @@ def main():
               f"{'ok' if mib(after_tree) <= args.budget_mib else 'OVER'}")
         print(f"[gate] avif_decode={avif_checked - len(avif_failures)}/{avif_checked} -> "
               f"{'ok' if not avif_failures else 'FAILED'}")
+        print(f"[gate] lightbox_refs={lightbox_checked} runtime_guard -> "
+              f"{'ok' if not lightbox_failures else 'FAILED'}")
         if broken:
             print("[gate] first broken refs:")
             for f, r in broken[:20]:
@@ -574,6 +689,10 @@ def main():
         if avif_failures:
             print("[gate] first AVIF decode failures:")
             for path, error in avif_failures[:20]:
+                print(f"    {path} -> {error}")
+        if lightbox_failures:
+            print("[gate] first lightbox runtime failures:")
+            for path, error in lightbox_failures[:20]:
                 print(f"    {path} -> {error}")
         report = {
             "before_mib": round(mib(before_tree), 2),
@@ -583,6 +702,9 @@ def main():
             "refs_rewritten": total_repl, "broken_refs": len(broken),
             "avif_checked": avif_checked,
             "avif_decode_failures": len(avif_failures),
+            "lightbox_plugin_patched": lightbox_plugin_patched,
+            "lightbox_refs_checked": lightbox_checked,
+            "lightbox_runtime_failures": len(lightbox_failures),
             "quality": args.quality, "subsampling": args.subsampling,
             "speed": args.speed, "cache_enabled": cache_dir is not None,
             "cache_schema": CACHE_SCHEMA if cache_dir else None,
@@ -600,6 +722,8 @@ def main():
             sys.exit("gate FAILED: broken image references remain")
         if avif_failures:
             sys.exit("gate FAILED: generated AVIF files failed to decode")
+        if lightbox_failures:
+            sys.exit("gate FAILED: lightbox asset links are not runtime-safe")
         if mib(after_tree) > args.budget_mib:
             sys.exit(f"gate FAILED: tree {mib(after_tree):.1f} MiB over budget {args.budget_mib}")
     else:

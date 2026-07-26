@@ -160,6 +160,8 @@ def optimize_snapshot(repo, staged_worktree, args):
         raise RefreshError("optimizer report contains broken image references")
     if report.get("avif_decode_failures") != 0:
         raise RefreshError("optimizer report contains AVIF decode failures")
+    if report.get("lightbox_runtime_failures") != 0:
+        raise RefreshError("optimizer report contains unsafe lightbox links")
     if float(report.get("after_mib", args.budget_mib + 1)) > args.budget_mib:
         raise RefreshError("optimizer report exceeds the configured size budget")
     return report

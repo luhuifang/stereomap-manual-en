@@ -8,6 +8,9 @@ require(['gitbook', 'jquery'], function(gitbook, $) {
     gitbook.events.bind('page.change', function() {
         $.map(opts, function(ele) {
             $(ele).each((index, value) => {
+                if(value.hasAttribute('data-lightbox')){
+                    return;
+                }
                 const attr = value.attributes.getNamedItem('href');
                 if(attr){
                     const href = attr.value.toLowerCase()
