@@ -4,8 +4,9 @@
 What it does, in-place on a ``docs/`` directory:
   1. Classify every raster image (png/jpg/jpeg) as referenced / unreferenced by
      parsing all HTML/CSS/JS/JSON (URL-decode + HTML-unescape + case-fold).
-  2. Convert referenced images to AVIF (lossy, 4:4:4 chroma). Per image, if the
-     AVIF is NOT smaller than the original, the original is kept untouched.
+  2. Convert referenced images to AVIF (lossy, 4:4:4 chroma), preserving real
+     source transparency. Per image, if the AVIF is NOT smaller than the
+     original, the original is kept untouched.
   3. Rewrite every reference (.png/.jpg/.jpeg -> .avif) for converted images,
      handling spaces / & / parentheses / CJK via URL-encoding and HTML-entity forms.
   4. Keep GitBook's add-index-html plugin from rewriting lightbox asset links.
@@ -44,7 +45,7 @@ except Exception:
 TEXT_EXTS = {".html", ".css", ".js", ".json", ".svg", ".xml", ".md", ".txt", ".map"}
 RASTER_EXTS = {".png", ".jpg", ".jpeg"}
 IMG_ANCHOR = "assets/"  # all manual images live under img/assets/
-CACHE_SCHEMA = "manual-avif-cache-v1"
+CACHE_SCHEMA = "manual-avif-cache-v2-alpha"
 ADD_INDEX_HTML_PLUGIN = Path(
     "gitbook/gitbook-plugin-add-index-html/plugin.js"
 )
@@ -334,17 +335,41 @@ def gate_refs(text_files, docs):
     return broken
 
 
-def gate_avif_decode(docs):
-    """Decode every generated AVIF and return (checked_count, failures)."""
+def transparency_error(image):
+    """Return why an image lost transparency, or None when alpha is usable."""
+    if "A" not in image.getbands():
+        return "missing alpha channel"
+    if image.getchannel("A").getextrema()[0] >= 255:
+        return "alpha channel is fully opaque"
+    return None
+
+
+def prepare_avif_image(source_image):
+    """Use RGBA only when the source contains at least one transparent pixel."""
+    rgba = source_image.convert("RGBA")
+    if rgba.getchannel("A").getextrema()[0] < 255:
+        return rgba, True
+    return source_image.convert("RGB"), False
+
+
+def gate_avif_decode(docs, expected_transparent=()):
+    """Decode every AVIF and verify converted transparent inputs retain alpha."""
     avif_files = sorted(docs.rglob("*.avif"))
+    expected_transparent = set(expected_transparent)
     failures = []
+    transparency_failures = []
     for path in avif_files:
         try:
             with Image.open(path) as image:
                 image.load()
+                rel_img = path.relative_to(docs / "img").as_posix()
+                if rel_img in expected_transparent:
+                    error = transparency_error(image)
+                    if error:
+                        transparency_failures.append((rel_img, error))
         except Exception as exc:
             failures.append((path.relative_to(docs).as_posix(), str(exc)))
-    return len(avif_files), failures
+    return len(avif_files), failures, transparency_failures
 
 
 def gate_lightbox_runtime(text_files, docs):
@@ -446,11 +471,14 @@ def load_cached_avif(cache_dir, key, original_bytes):
     avif_path, metadata_path = cache_entry_paths(cache_dir, key)
     existed = avif_path.exists() or metadata_path.exists()
     if not existed:
-        return None, False
+        return None, False, False
     try:
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
         if metadata.get("schema") != CACHE_SCHEMA or metadata.get("key") != key:
             raise ValueError("cache metadata identity mismatch")
+        preserves_transparency = metadata.get("preserves_transparency")
+        if not isinstance(preserves_transparency, bool):
+            raise ValueError("cache transparency metadata is missing")
         cached_bytes = int(metadata["bytes"])
         if cached_bytes <= 0 or cached_bytes >= original_bytes:
             raise ValueError("cached AVIF no longer beats the original")
@@ -458,13 +486,19 @@ def load_cached_avif(cache_dir, key, original_bytes):
             raise ValueError("cached AVIF size mismatch")
         if file_sha256(avif_path) != metadata.get("sha256"):
             raise ValueError("cached AVIF checksum mismatch")
-        return avif_path, False
+        if preserves_transparency:
+            with Image.open(avif_path) as image:
+                image.load()
+                error = transparency_error(image)
+                if error:
+                    raise ValueError(f"cached AVIF {error}")
+        return avif_path, False, preserves_transparency
     except (OSError, TypeError, ValueError, KeyError, json.JSONDecodeError):
         discard_cache_entry(avif_path, metadata_path)
-        return None, True
+        return None, True, False
 
 
-def publish_cached_avif(cache_dir, key, data):
+def publish_cached_avif(cache_dir, key, data, preserves_transparency):
     avif_path, metadata_path = cache_entry_paths(cache_dir, key)
     avif_path.parent.mkdir(parents=True, exist_ok=True)
     metadata = {
@@ -472,6 +506,7 @@ def publish_cached_avif(cache_dir, key, data):
         "key": key,
         "bytes": len(data),
         "sha256": hashlib.sha256(data).hexdigest(),
+        "preserves_transparency": preserves_transparency,
     }
     avif_tmp = avif_path.with_name(f".{avif_path.name}.{os.getpid()}.tmp")
     metadata_tmp = metadata_path.with_name(
@@ -557,9 +592,10 @@ def main():
     to_process = referenced[: args.limit] if args.limit else referenced
     converted_rel = []        # img-rel posix that became .avif
     kept_png = []             # referenced but avif not smaller
+    transparent_avif_rel = []  # generated AVIF paths expected to retain alpha
     src_bytes = avif_bytes = 0
     cache_hits = cache_misses = cache_writes = cache_invalid = 0
-    cache_write_failures = images_encoded = 0
+    cache_write_failures = images_encoded = transparent_inputs = 0
     for i, img_path in enumerate(to_process, 1):
         rel_img = img_path.relative_to(docs / "img").as_posix()
         ob = img_path.stat().st_size
@@ -567,12 +603,19 @@ def main():
         cache_key = None
         if cache_dir:
             cache_key = image_cache_key(img_path, cache_fingerprint)
-            cached_path, invalid = load_cached_avif(cache_dir, cache_key, ob)
+            cached_path, invalid, preserves_transparency = load_cached_avif(
+                cache_dir, cache_key, ob
+            )
             if invalid:
                 cache_invalid += 1
             if cached_path is not None:
                 nb = cached_path.stat().st_size
                 converted_rel.append(rel_img)
+                if preserves_transparency:
+                    transparent_inputs += 1
+                    transparent_avif_rel.append(
+                        Path(rel_img).with_suffix(".avif").as_posix()
+                    )
                 avif_bytes += nb
                 cache_hits += 1
                 if not args.dry_run:
@@ -584,7 +627,9 @@ def main():
             cache_misses += 1
         try:
             with Image.open(img_path) as source_image:
-                im = source_image.convert("RGB")
+                im, preserves_transparency = prepare_avif_image(source_image)
+                if preserves_transparency:
+                    transparent_inputs += 1
         except Exception as e:
             print(f"  [skip] {rel_img}: unreadable ({e})")
             kept_png.append(img_path)
@@ -595,17 +640,29 @@ def main():
                 subsampling=args.subsampling)
         images_encoded += 1
         nb = buf.tell()
+        data = buf.getvalue()
+        if preserves_transparency:
+            with Image.open(BytesIO(data)) as encoded_image:
+                encoded_image.load()
+                error = transparency_error(encoded_image)
+            if error:
+                sys.exit(f"gate FAILED: {rel_img} AVIF {error}")
         if nb < ob:
             converted_rel.append(rel_img)
+            if preserves_transparency:
+                transparent_avif_rel.append(
+                    Path(rel_img).with_suffix(".avif").as_posix()
+                )
             avif_bytes += nb
             if not args.dry_run:
-                data = buf.getvalue()
                 out = img_path.with_suffix(".avif")
                 out.write_bytes(data)
                 img_path.unlink()
                 if cache_dir:
                     try:
-                        publish_cached_avif(cache_dir, cache_key, data)
+                        publish_cached_avif(
+                            cache_dir, cache_key, data, preserves_transparency
+                        )
                         cache_writes += 1
                     except OSError as exc:
                         cache_write_failures += 1
@@ -668,7 +725,9 @@ def main():
         after_tree = sum(p.stat().st_size for p in docs.rglob("*") if p.is_file())
         text_files_after = load_text_files(docs)
         broken = gate_refs(text_files_after, docs)
-        avif_checked, avif_failures = gate_avif_decode(docs)
+        avif_checked, avif_failures, avif_transparency_failures = (
+            gate_avif_decode(docs, transparent_avif_rel)
+        )
         lightbox_checked, lightbox_failures = gate_lightbox_runtime(
             text_files_after, docs
         )
@@ -680,6 +739,10 @@ def main():
               f"{'ok' if mib(after_tree) <= args.budget_mib else 'OVER'}")
         print(f"[gate] avif_decode={avif_checked - len(avif_failures)}/{avif_checked} -> "
               f"{'ok' if not avif_failures else 'FAILED'}")
+        print(f"[gate] avif_transparency="
+              f"{len(transparent_avif_rel) - len(avif_transparency_failures)}/"
+              f"{len(transparent_avif_rel)} -> "
+              f"{'ok' if not avif_transparency_failures else 'FAILED'}")
         print(f"[gate] lightbox_refs={lightbox_checked} runtime_guard -> "
               f"{'ok' if not lightbox_failures else 'FAILED'}")
         if broken:
@@ -689,6 +752,10 @@ def main():
         if avif_failures:
             print("[gate] first AVIF decode failures:")
             for path, error in avif_failures[:20]:
+                print(f"    {path} -> {error}")
+        if avif_transparency_failures:
+            print("[gate] first AVIF transparency failures:")
+            for path, error in avif_transparency_failures[:20]:
                 print(f"    {path} -> {error}")
         if lightbox_failures:
             print("[gate] first lightbox runtime failures:")
@@ -702,6 +769,9 @@ def main():
             "refs_rewritten": total_repl, "broken_refs": len(broken),
             "avif_checked": avif_checked,
             "avif_decode_failures": len(avif_failures),
+            "transparent_inputs": transparent_inputs,
+            "transparent_avif": len(transparent_avif_rel),
+            "avif_transparency_failures": len(avif_transparency_failures),
             "lightbox_plugin_patched": lightbox_plugin_patched,
             "lightbox_refs_checked": lightbox_checked,
             "lightbox_runtime_failures": len(lightbox_failures),
@@ -722,6 +792,8 @@ def main():
             sys.exit("gate FAILED: broken image references remain")
         if avif_failures:
             sys.exit("gate FAILED: generated AVIF files failed to decode")
+        if avif_transparency_failures:
+            sys.exit("gate FAILED: generated AVIF files lost source transparency")
         if lightbox_failures:
             sys.exit("gate FAILED: lightbox asset links are not runtime-safe")
         if mib(after_tree) > args.budget_mib:
